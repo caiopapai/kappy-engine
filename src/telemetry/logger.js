@@ -1,10 +1,12 @@
+// src/telemetry/logger.js
+// Logger estruturado manual seguindo a especificação OpenTelemetry Logs.
+// Emite NDJSON para stdout.
+
 const SEVERITY = {
   INFO:  { number: 9,  text: "INFO"  },
   WARN:  { number: 13, text: "WARN"  },
   ERROR: { number: 17, text: "ERROR" },
 };
-
-// ── Resource fixo para todo o processo ───────────────────────
 
 const RESOURCE = {
   "service.name":       "kappy-engine",
@@ -12,11 +14,10 @@ const RESOURCE = {
   "telemetry.sdk.name": "kappy-otel-manual",
 };
 
-// ── Emit ──────────────────────────────────────────────────────
-
 function emit(severityKey, body, attributes = {}) {
+  // eslint-disable-next-line security/detect-object-injection
   const severity = SEVERITY[severityKey];
-  const nowNs    = BigInt(Date.now()) * 1_000_000n; // ms → nanoseconds
+  const nowNs    = BigInt(Date.now()) * 1_000_000n;
 
   const record = {
     Timestamp:         nowNs.toString(),
@@ -28,11 +29,8 @@ function emit(severityKey, body, attributes = {}) {
     Attributes:        attributes,
   };
 
-  // Escreve para stdout como JSON numa única linha (NDJSON)
   process.stdout.write(JSON.stringify(record) + "\n");
 }
-
-// ── API pública ───────────────────────────────────────────────
 
 export const logger = {
   info:  (body, attributes = {}) => emit("INFO",  body, attributes),

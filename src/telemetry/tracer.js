@@ -1,16 +1,16 @@
+// src/telemetry/tracer.js
+// Tracer manual OpenTelemetry — sem auto-instrumentação.
+
 import {
   NodeTracerProvider,
   SimpleSpanProcessor,
   ConsoleSpanExporter,
-  BatchSpanProcessor,
 } from "@opentelemetry/sdk-trace-node";
 
 import { Resource }                    from "@opentelemetry/resources";
 import { SEMRESATTRS_SERVICE_NAME,
-         SEMRESATTRS_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
+  SEMRESATTRS_SERVICE_VERSION }        from "@opentelemetry/semantic-conventions";
 import { trace, SpanStatusCode }       from "@opentelemetry/api";
-
-// ── Provider ──────────────────────────────────────────────────
 
 const provider = new NodeTracerProvider({
   resource: new Resource({
@@ -19,25 +19,18 @@ const provider = new NodeTracerProvider({
   }),
 });
 
-// Exporta spans como JSON para stdout (OTLP-compatible)
-// Em produção, trocar por OTLPTraceExporter apontando para um collector
 provider.addSpanProcessor(
-  new SimpleSpanProcessor(new ConsoleSpanExporter())
+  new SimpleSpanProcessor(new ConsoleSpanExporter()),
 );
 
 provider.register();
 
-// ── Tracer ────────────────────────────────────────────────────
-
 export const tracer = trace.getTracer("kappy-engine", "0.1.0");
 export { SpanStatusCode };
 
-// ── Helper: wrap async function in a span ────────────────────
-// Uso:
-//   const result = await withSpan("stocks.search", { "query": q }, async (span) => {
-//     return await repo.search(q);
-//   });
-
+/**
+ * Executa fn dentro de um span, gerindo status e erros automaticamente.
+ */
 export async function withSpan(name, attributes = {}, fn) {
   const span = tracer.startSpan(name, { attributes });
   try {

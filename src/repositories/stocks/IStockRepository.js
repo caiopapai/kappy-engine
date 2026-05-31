@@ -1,32 +1,25 @@
-// src/repositories/stocks/IStockRepository.js
-// Contrato que todos os providers de cotações devem implementar.
-// Para adicionar um novo provider (ex: Yahoo Finance, Alpha Vantage):
-//   1. Cria XxxRepository.js que implementa estes métodos
-//   2. Regista em StockRepositoryFactory.js
-//   3. Adiciona STOCKS_PROVIDER=xxx ao .env
-
 export class IStockRepository {
   /**
    * Pesquisa ativos por ticker ou nome.
-   * @param {string} query - Termo de pesquisa (ex: "PETR", "Petrobras")
-   * @param {string} type  - Tipo de ativo: "stock" | "fii" | "bdr" | "all"
+   * @param {string} _query - Termo de pesquisa
+   * @param {string} _type  - Tipo: "stock" | "fii" | "bdr" | "all"
    * @returns {Promise<Array<{ ticker, name, type, price, change }>>}
    */
-  async search(query, type = "all") {
-    throw new Error("search() não implementado");
+  search(_query, _type = "all") {
+    return Promise.reject(new Error("search() não implementado"));
   }
 
   /**
    * Obtém a cotação actual de um ou mais tickers.
-   * @param {string|string[]} tickers - Ex: "PETR4" ou ["PETR4", "VALE3"]
-   * @returns {Promise<Array<{ ticker, name, price, currency, change, changePercent, volume, source }>>}
+   * @param {string|string[]} _tickers
+   * @returns {Promise<Array<{ ticker, name, price, currency, change, source }>>}
    */
-  async getQuote(tickers) {
-    throw new Error("getQuote() não implementado");
+  getQuote(_tickers) {
+    return Promise.reject(new Error("getQuote() não implementado"));
   }
 
   /**
-   * Nome do provider (para logs e UI).
+   * Nome do provider.
    * @returns {string}
    */
   get name() {
