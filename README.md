@@ -28,15 +28,13 @@ kappy-engine/
 ## Setup
 
 ```bash
-# 1. Instala dependências
-npm install
+# Opção rápida (recomendada)
+chmod +x scripts/setup.sh && ./scripts/setup.sh
 
-# 2. Cria o ficheiro de configuração
+# Ou manual:
+npm install        # instala dependências + activa Husky automaticamente
 cp .env.example .env
-
-# 3. Preenche o .env com os teus valores
-
-# 4. Arranca em desenvolvimento
+# edita o .env
 npm run dev
 ```
 
@@ -50,7 +48,76 @@ npm run dev
 | `STOCKS_PROVIDER` | Provider de cotações: `brapi` | Não |
 | `BRAPI_TOKEN` | Token brapi.dev | Para cotações B3 |
 
-## Endpoints
+## Scripts
+
+| Comando | O que faz |
+|---|---|
+| `npm run dev` | Arranca em desenvolvimento com hot-reload |
+| `npm test` | Corre todos os testes (unit + integração) |
+| `npm run test:watch` | Testes em modo watch |
+| `npm run test:cov` | Testes com relatório de cobertura |
+| `npm run lint` | ESLint em `src/` e `tests/` |
+| `npm run lint:fix` | ESLint com auto-fix |
+
+## Linting
+
+ESLint v9 com flat config. Regras activas:
+
+- **`eslint:recommended`** — erros comuns de JavaScript
+- **`eslint-plugin-node`** — boas práticas Node.js (imports, process, buffer)
+- **`eslint-plugin-security`** — vulnerabilidades comuns (injection, unsafe regex, eval)
+- **Regras adicionais** — `prefer-const`, `eqeqeq`, `no-eval`, `require-await`, formatação consistente
+
+```bash
+npm run lint        # verificar
+npm run lint:fix    # corrigir automaticamente
+```
+
+## Pre-commit Hook
+
+O Husky bloqueia commits que falhem lint ou testes:
+
+```
+git commit -m "feat: nova feature"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  kappy-engine pre-commit
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+▶ [1/2] ESLint (ficheiros staged)...
+▶ [2/2] Testes Jest (completo)...
+
+  ✓ Pre-commit passou. A commitar...
+```
+
+Para saltar o hook pontualmente (não recomendado):
+```bash
+git commit -m "wip" --no-verify
+```
+
+## Testes
+
+```bash
+npm test               # todos os testes
+npm run test:cov       # com cobertura de código
+```
+
+Estrutura:
+```
+tests/
+├── mocks/
+│   ├── fetch.mock.js      ← factory de mocks HTTP
+│   └── sheets.mock.js     ← dados mock consistentes
+├── unit/
+│   ├── telemetry/         ← logger OTLP
+│   ├── middleware/        ← requestLogger, errorHandler
+│   └── repositories/     ← BrapiRepository, SheetsRepository, Factory
+└── integration/
+    ├── stocks.routes.test.js
+    ├── sheets.routes.test.js
+    ├── transactions.routes.test.js
+    └── server.test.js
+```
 
 ### Stocks
 ```

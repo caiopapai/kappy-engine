@@ -1,0 +1,31 @@
+#!/bin/sh
+# .husky/pre-commit
+# Executado automaticamente antes de cada git commit.
+#
+# Pipeline:
+#   1. lint-staged → ESLint nos ficheiros staged (src + tests)
+#   2. npm test    → Jest completo (todos os testes unitários e de integração)
+#
+# Se qualquer passo falhar o commit é bloqueado.
+
+set -e  # sai imediatamente se qualquer comando falhar
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  kappy-engine pre-commit"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ── Passo 1: Lint nos ficheiros staged ────────────────────────
+echo "▶ [1/2] ESLint (ficheiros staged)..."
+npx lint-staged
+
+echo ""
+echo "▶ [2/2] Testes Jest (completo)..."
+npm test
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  ✓ Pre-commit passou. A commitar..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""

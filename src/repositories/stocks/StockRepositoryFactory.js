@@ -1,37 +1,32 @@
 // src/repositories/stocks/StockRepositoryFactory.js
-// Factory que devolve o provider configurado em STOCKS_PROVIDER.
-// Para adicionar um novo provider:
-//   1. Cria XxxRepository.js
-//   2. Importa e regista no switch abaixo
-
-import { config } from "../../config/index.js";
+import { config }          from "../../config/index.js";
 import { BrapiRepository } from "./BrapiRepository.js";
+import { logger }          from "../../telemetry/logger.js";
 
 const instances = {};
 
 export function getStockRepository() {
   const provider = config.stocks.provider;
 
-  if (instances[provider]) return instances[provider];
+  // eslint-disable-next-line security/detect-object-injection
+  if (instances[provider]) {
+    // eslint-disable-next-line security/detect-object-injection
+    return instances[provider];
+  }
+
+  let repo;
 
   switch (provider) {
     case "brapi":
-      instances[provider] = new BrapiRepository();
+      repo = new BrapiRepository();
       break;
-
-    // Adiciona novos providers aqui:
-    // case "hgbrasil":
-    //   instances[provider] = new HGBrasilRepository();
-    //   break;
-    // case "yahoofinance":
-    //   instances[provider] = new YahooFinanceRepository();
-    //   break;
-
     default:
-      console.warn(`[StockFactory] Provider desconhecido: "${provider}", usando brapi`);
-      instances[provider] = new BrapiRepository();
+      logger.warn("unknown stocks provider, falling back to brapi", { "provider": provider });
+      repo = new BrapiRepository();
   }
 
-  console.log(`[StockFactory] Provider activo: ${instances[provider].name}`);
-  return instances[provider];
+  logger.info("stock repository initialised", { "provider": repo.name });
+  // eslint-disable-next-line security/detect-object-injection
+  instances[provider] = repo;
+  return repo;
 }

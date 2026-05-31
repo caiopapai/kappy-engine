@@ -5,19 +5,50 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "dev":   "node --watch src/server.js",
-    "start": "node src/server.js"
+    "dev":        "node --watch src/server.js",
+    "start":      "node src/server.js",
+    "test":       "node --experimental-vm-modules node_modules/.bin/jest --runInBand",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test:cov":   "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+    "lint":       "eslint src tests",
+    "lint:fix":   "eslint src tests --fix",
+    "prepare":    "husky"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {},
+    "extensionsToTreatAsEsm": [".js"],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "testMatch": ["**/tests/**/*.test.js"],
+    "collectCoverageFrom": ["src/**/*.js"],
+    "coverageDirectory": "coverage"
   },
   "dependencies": {
-    "@opentelemetry/api":             "^1.9.0",
-    "@opentelemetry/sdk-trace-node":  "^1.25.0",
-    "@opentelemetry/sdk-logs":        "^0.52.0",
-    "@opentelemetry/resources":       "^1.25.0",
+    "@opentelemetry/api":                  "^1.9.0",
+    "@opentelemetry/sdk-trace-node":       "^1.25.0",
+    "@opentelemetry/sdk-logs":             "^0.52.0",
+    "@opentelemetry/resources":            "^1.25.0",
     "@opentelemetry/semantic-conventions": "^1.25.0",
     "cors":       "^2.8.5",
     "dotenv":     "^16.4.5",
     "express":    "^4.19.2",
     "node-fetch": "^3.3.2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@eslint/js":               "^9.15.0",
+    "eslint":                   "^9.15.0",
+    "eslint-plugin-n":          "^17.13.2",
+    "eslint-plugin-security":   "^3.0.1",
+    "globals":                  "^15.12.0",
+    "husky":                    "^9.1.7",
+    "jest":                     "^29.7.0",
+    "lint-staged":              "^15.2.10",
+    "supertest":                "^7.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.js": ["eslint --fix", "eslint"],
+    "tests/**/*.js": ["eslint --fix", "eslint"]
+  }
 }

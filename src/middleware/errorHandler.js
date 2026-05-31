@@ -1,7 +1,7 @@
 // src/middleware/errorHandler.js
 import { logger } from "../telemetry/logger.js";
 
-export function errorHandler(err, req, res, next) {
+export function errorHandler(err, req, res, _next) {
   logger.error("unhandled error", {
     "http.method": req.method,
     "http.route":  req.path,
