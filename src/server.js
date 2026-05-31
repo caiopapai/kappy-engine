@@ -5,8 +5,9 @@ import { config, validateConfig } from "./config/index.js";
 import { logger }     from "./telemetry/logger.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
-import stocksRouter   from "./routes/stocks.js";
-import sheetsRouter   from "./routes/sheets.js";
+import stocksRouter       from "./routes/stocks.js";
+import sheetsRouter       from "./routes/sheets.js";
+import transactionsRouter from "./routes/transactions.js";
 
 const app = express();
 
@@ -31,8 +32,9 @@ app.get("/health", (req, res) => {
 
 // ── Rotas ─────────────────────────────────────────────────────
 
-app.use("/api/stocks", stocksRouter);
-app.use("/api/sheets", sheetsRouter);
+app.use("/api/stocks",       stocksRouter);
+app.use("/api/sheets",       sheetsRouter);
+app.use("/api/transactions", transactionsRouter);
 
 // ── 404 + Error ───────────────────────────────────────────────
 
