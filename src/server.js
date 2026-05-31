@@ -1,13 +1,12 @@
 // src/server.js
-// Entry point do kappy-engine.
-// Arranca o servidor Express com todas as rotas registadas.
-
-import express    from "express";
-import cors       from "cors";
+import express        from "express";
+import cors           from "cors";
 import { config, validateConfig } from "./config/index.js";
-import stocksRouter from "./routes/stocks.js";
-import sheetsRouter from "./routes/sheets.js";
+import { logger }     from "./telemetry/logger.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
+import stocksRouter   from "./routes/stocks.js";
+import sheetsRouter   from "./routes/sheets.js";
 
 const app = express();
 
@@ -15,22 +14,19 @@ const app = express();
 
 app.use(cors({
   origin: [
-    "http://localhost:5173",   // kappy (Vite dev)
-    "http://localhost:4173",   // kappy (Vite preview)
-    "http://localhost:3000",   // kappy (alternativa)
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "http://localhost:3000",
   ],
 }));
 
 app.use(express.json());
+app.use(requestLogger);  // log OTLP por cada request
 
-// ── Health check ──────────────────────────────────────────────
+// ── Health ────────────────────────────────────────────────────
 
 app.get("/health", (req, res) => {
-  res.json({
-    ok:      true,
-    service: "kappy-engine",
-    version: "0.1.0",
-  });
+  res.json({ ok: true, service: "kappy-engine", version: "0.1.0" });
 });
 
 // ── Rotas ─────────────────────────────────────────────────────
@@ -38,7 +34,7 @@ app.get("/health", (req, res) => {
 app.use("/api/stocks", stocksRouter);
 app.use("/api/sheets", sheetsRouter);
 
-// ── 404 + Error handler ───────────────────────────────────────
+// ── 404 + Error ───────────────────────────────────────────────
 
 app.use(notFound);
 app.use(errorHandler);
@@ -46,15 +42,14 @@ app.use(errorHandler);
 // ── Arranque ──────────────────────────────────────────────────
 
 app.listen(config.port, () => {
-  console.log(`\n🚀 kappy-engine running on http://localhost:${config.port}`);
-  console.log(`   Health: http://localhost:${config.port}/health\n`);
+  logger.info("kappy-engine started", {
+    "server.port":    config.port,
+    "server.url":     `http://localhost:${config.port}`,
+    "stocks.provider": config.stocks.provider,
+  });
 
   const warnings = validateConfig();
-  if (warnings.length > 0) {
-    console.warn("⚠️  Configuração incompleta:");
-    warnings.forEach(w => console.warn(`   - ${w}`));
-    console.log("");
-  }
+  warnings.forEach(w => logger.warn("configuration warning", { "warning": w }));
 });
 
 export default app;

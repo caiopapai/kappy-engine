@@ -1,17 +1,12 @@
 // src/routes/stocks.js
-// Endpoints de cotações e pesquisa de ativos.
-//
-// GET /api/stocks/search?q=PETR&type=stock   → pesquisa ativos
-// GET /api/stocks/quote/:ticker              → cotação de um ticker
-// GET /api/stocks/quote/:ticker1,:ticker2    → cotação de múltiplos
-
-import { Router } from "express";
+import { Router }           from "express";
 import { getStockRepository } from "../repositories/stocks/StockRepositoryFactory.js";
+import { logger }           from "../telemetry/logger.js";
+import { withSpan }         from "../telemetry/tracer.js";
 
 const router = Router();
 
-// ── Pesquisa ──────────────────────────────────────────────────
-// GET /api/stocks/search?q=PETR&type=stock
+// ── GET /api/stocks/search?q=PETR&type=stock ─────────────────
 
 router.get("/search", async (req, res) => {
   const { q, type = "stock" } = req.query;
@@ -20,46 +15,55 @@ router.get("/search", async (req, res) => {
     return res.status(400).json({ ok: false, error: "Parâmetro 'q' obrigatório" });
   }
 
-  try {
-    const repo    = getStockRepository();
-    const results = await repo.search(q.trim(), type);
-    res.json({ ok: true, data: results, provider: repo.name });
-  } catch (err) {
-    console.error("[stocks/search]", err.message);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+  await withSpan("route.stocks.search", { "query": q, "type": type }, async () => {
+    try {
+      const repo    = getStockRepository();
+      const results = await repo.search(q.trim(), type);
+      res.json({ ok: true, data: results, provider: repo.name });
+    } catch (err) {
+      logger.error("route.stocks.search error", { "query": q, "error": err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
 });
 
-// ── Cotação ───────────────────────────────────────────────────
-// GET /api/stocks/quote/PETR4
-// GET /api/stocks/quote/PETR4,VALE3
+// ── GET /api/stocks/quote/:tickers ───────────────────────────
 
 router.get("/quote/:tickers", async (req, res) => {
   const tickers = req.params.tickers.split(",").map(t => t.trim().toUpperCase());
 
-  if (tickers.length === 0) {
-    return res.status(400).json({ ok: false, error: "Ticker obrigatório" });
-  }
+  await withSpan("route.stocks.quote", { "tickers": tickers.join(",") }, async () => {
+    try {
+      const repo    = getStockRepository();
+      const results = await repo.getQuote(tickers);
 
-  try {
-    const repo    = getStockRepository();
-    const results = await repo.getQuote(tickers);
+      // Resiliente: ticker não encontrado → resposta amigável, não 404
+      if (results.length === 0) {
+        logger.warn("route.stocks.quote not found", { "tickers": tickers.join(",") });
+        return res.json({
+          ok:        false,
+          available: false,
+          message:   `Cotação não disponível para: ${tickers.join(", ")}`,
+          tickers,
+        });
+      }
 
-    if (results.length === 0) {
-      return res.status(404).json({ ok: false, error: "Ticker não encontrado" });
+      const data = tickers.length === 1 ? results[0] : results;
+      res.json({ ok: true, available: true, data, provider: repo.name });
+
+    } catch (err) {
+      logger.error("route.stocks.quote error", { "tickers": tickers.join(","), "error": err.message });
+      res.json({
+        ok:        false,
+        available: false,
+        message:   "Serviço de cotações indisponível de momento",
+        tickers,
+      });
     }
-
-    // Se pediu um só, devolve objecto; se pediu vários, devolve array
-    const data = tickers.length === 1 ? results[0] : results;
-    res.json({ ok: true, data, provider: repo.name });
-  } catch (err) {
-    console.error("[stocks/quote]", err.message);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+  });
 });
 
-// ── Provider activo ───────────────────────────────────────────
-// GET /api/stocks/provider
+// ── GET /api/stocks/provider ─────────────────────────────────
 
 router.get("/provider", (req, res) => {
   const repo = getStockRepository();
