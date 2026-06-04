@@ -2,6 +2,7 @@
 import { config }   from "../../config/index.js";
 import { logger }   from "../../telemetry/logger.js";
 import { withSpan } from "../../telemetry/tracer.js";
+import { cache }    from "../../cache/index.js";
 
 export class SheetsRepository {
 
@@ -48,13 +49,48 @@ export class SheetsRepository {
     });
   }
 
-  getAll(sheet)         { return this.#get(sheet); }
-  getById(sheet, id)    { return this.#get(sheet, id); }
-  save(sheet, row)      { return this.#post({ action: "upsert",      sheet, row }); }
-  delete(sheet, id)     { return this.#post({ action: "delete",      sheet, id }); }
-  bulkSave(sheet, rows) { return this.#post({ action: "bulk_upsert", sheet, rows }); }
-  clear(sheet)          { return this.#post({ action: "delete_all",  sheet }); }
+  // ── Public API com cache ──────────────────────────────────
 
+  async getAll(sheet) {
+    const cached = cache.get(sheet);
+    if (cached) {
+      logger.info("sheets.cache hit", { sheet, count: cached.length });
+      return cached;
+    }
+
+    const data = await this.#get(sheet);
+    cache.set(sheet, data);
+    return data;
+  }
+
+  getById(sheet, id) {
+    return this.#get(sheet, id);
+  }
+
+  async save(sheet, row) {
+    const result = await this.#post({ action: "upsert", sheet, row });
+    cache.invalidate(sheet); // Invalida cache após escrita
+    return result;
+  }
+
+  async delete(sheet, id) {
+    const result = await this.#post({ action: "delete", sheet, id });
+    cache.invalidate(sheet);
+    return result;
+  }
+
+  async bulkSave(sheet, rows) {
+    const result = await this.#post({ action: "bulk_upsert", sheet, rows });
+    cache.invalidate(sheet);
+    return result;
+  }
+
+  clear(sheet) {
+    cache.invalidate(sheet);
+    return this.#post({ action: "delete_all", sheet });
+  }
+
+  // ── Shortcuts ─────────────────────────────────────────────
   accounts()      { return this.getAll("accounts"); }
   categories()    { return this.getAll("categories"); }
   subcategories() { return this.getAll("subcategories"); }

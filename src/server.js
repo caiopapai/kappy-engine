@@ -8,9 +8,14 @@ import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import stocksRouter       from "./routes/stocks.js";
 import sheetsRouter       from "./routes/sheets.js";
 import transactionsRouter from "./routes/transactions.js";
+import budgetsRouter      from "./routes/budgets.js";
+import goalsRouter        from "./routes/goals.js";
+import investmentsRouter  from "./routes/investments.js";
 import { makeEntityRouter } from "./routes/entities.js";
 import configRouter       from "./routes/config.js";
 import settingsRouter     from "./routes/settings.js";
+import bootstrapRouter    from "./routes/bootstrap.js";
+import { cache }          from "./cache/index.js";
 
 const app = express();
 
@@ -30,21 +35,24 @@ app.use(requestLogger);  // log OTLP por cada request
 // ── Health ────────────────────────────────────────────────────
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "kappy-engine", version: "0.1.0" });
+  res.json({ ok: true, service: "kappy-engine", version: "0.1.0", cache: cache.stats() });
 });
 
 // ── Rotas ─────────────────────────────────────────────────────
 
+app.use("/api/bootstrap",    bootstrapRouter);
 app.use("/api/stocks",       stocksRouter);
 app.use("/api/config",       configRouter);
 app.use("/api/settings",     settingsRouter);
 app.use("/api/sheets",       sheetsRouter);   // mantido para compatibilidade
 app.use("/api/transactions", transactionsRouter);
+app.use("/api/budgets",      budgetsRouter);
+app.use("/api/goals",        goalsRouter);
+app.use("/api/investments",  investmentsRouter);
 
-// Entidades CRUD simples — router dedicado por entidade
+// Entidades CRUD simples
 [
-  "accounts", "categories", "subcategories",
-  "investments", "goals", "budgets", "recurring_rules",
+  "accounts", "categories", "subcategories", "recurring_rules",
 ].forEach(entity => {
   app.use(`/api/${entity}`, makeEntityRouter(entity));
 });

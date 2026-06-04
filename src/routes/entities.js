@@ -10,7 +10,16 @@ import { withSpan }          from "../telemetry/tracer.js";
 const ALLOWED = new Set([
   "accounts", "categories", "subcategories",
   "investments", "goals", "budgets", "recurring_rules",
+  "settings",
 ]);
+
+// Campos obrigatórios por entidade
+const REQUIRED_FIELDS = {
+  investments: ["assetType", "ticker", "opType", "date", "quantity", "unitPrice"],
+  accounts:    ["name", "type", "balance", "currency"],
+  goals:       ["label", "targetValue"],
+  transactions: ["amount", "date", "type", "accountId"],
+};
 
 export function makeEntityRouter(entity) {
   if (!ALLOWED.has(entity)) {
@@ -40,6 +49,14 @@ export function makeEntityRouter(entity) {
     if (!row) {
       return res.status(400).json({ ok: false, error: "'row' obrigatório" });
     }
+
+    // Valida campos obrigatórios
+    const required = REQUIRED_FIELDS[entity] || [];
+    const missing  = required.filter(f => row[f] == null || row[f] === "");
+    if (missing.length > 0) {
+      return res.status(400).json({ ok: false, error: `Campos obrigatórios em falta: ${missing.join(", ")}` });
+    }
+
     await withSpan(`route.${entity}.save`, {}, async () => {
       try {
         const toSave = row.id ? row : { ...row, id: Date.now() };
