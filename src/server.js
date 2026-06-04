@@ -10,6 +10,7 @@ import sheetsRouter       from "./routes/sheets.js";
 import transactionsRouter from "./routes/transactions.js";
 import { makeEntityRouter } from "./routes/entities.js";
 import configRouter       from "./routes/config.js";
+import settingsRouter     from "./routes/settings.js";
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/stocks",       stocksRouter);
 app.use("/api/config",       configRouter);
+app.use("/api/settings",     settingsRouter);
 app.use("/api/sheets",       sheetsRouter);   // mantido para compatibilidade
 app.use("/api/transactions", transactionsRouter);
 
