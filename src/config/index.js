@@ -4,6 +4,10 @@ import "dotenv/config";
 export const config = {
   port: parseInt(process.env.PORT || "3001"),
 
+  // Provider de dados activo — define qual a base de dados em uso
+  // Valores possíveis: google_sheets | excel_365 | local_sqlite | postgres | mongodb
+  dataProvider: process.env.DATA_PROVIDER || "google_sheets",
+
   sheets: {
     url:    process.env.SHEETS_URL     || "",
     apiKey: process.env.SHEETS_API_KEY || "",

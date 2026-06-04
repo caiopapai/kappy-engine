@@ -8,6 +8,8 @@ import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import stocksRouter       from "./routes/stocks.js";
 import sheetsRouter       from "./routes/sheets.js";
 import transactionsRouter from "./routes/transactions.js";
+import { makeEntityRouter } from "./routes/entities.js";
+import configRouter       from "./routes/config.js";
 
 const app = express();
 
@@ -33,8 +35,17 @@ app.get("/health", (req, res) => {
 // ── Rotas ─────────────────────────────────────────────────────
 
 app.use("/api/stocks",       stocksRouter);
-app.use("/api/sheets",       sheetsRouter);
+app.use("/api/config",       configRouter);
+app.use("/api/sheets",       sheetsRouter);   // mantido para compatibilidade
 app.use("/api/transactions", transactionsRouter);
+
+// Entidades CRUD simples — router dedicado por entidade
+[
+  "accounts", "categories", "subcategories",
+  "investments", "goals", "budgets", "recurring_rules",
+].forEach(entity => {
+  app.use(`/api/${entity}`, makeEntityRouter(entity));
+});
 
 // ── 404 + Error ───────────────────────────────────────────────
 

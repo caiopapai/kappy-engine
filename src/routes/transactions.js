@@ -1,3 +1,11 @@
+// src/routes/transactions.js
+// Operações de transações com actualização atómica do saldo da conta.
+// O frontend nunca calcula saldos — isso é responsabilidade do engine.
+//
+// POST /api/transactions        → cria transação + actualiza saldo
+// DELETE /api/transactions/:id  → elimina transação + reverte saldo
+// GET /api/transactions         → lista todas (proxy para sheets)
+
 import { Router }              from "express";
 import { sheetsRepository }    from "../repositories/sheets/SheetsRepository.js";
 import { logger }              from "../telemetry/logger.js";
@@ -56,12 +64,17 @@ router.post("/", async (req, res) => {
       const isPos   = transaction.type === "income";
       const amount  = parseFloat(transaction.amount);
 
+      // Regra de data: só afecta o saldo se a data não for futura
+      const txDate  = toSave.date ? toSave.date.slice(0, 10) : "";
+      const today   = new Date().toISOString().slice(0, 10);
+      const affectsBalance = txDate <= today;
+
       // Guarda a transação
       await sheetsRepository.save("transactions", toSave);
-      logger.info("transaction saved", { "id": toSave.id, "type": toSave.type, "amount": amount });
+      logger.info("transaction saved", { "id": toSave.id, "type": toSave.type, "amount": amount, "date": txDate, "affectsBalance": affectsBalance });
 
-      // Actualiza saldo da conta (só em novas transações)
-      if (isNew) {
+      // Actualiza saldo da conta (só novas transações com data <= hoje)
+      if (isNew && affectsBalance) {
         const accounts = await sheetsRepository.getAll("accounts");
         const account  = accounts.find(a => a.id === toSave.accountId);
 
@@ -77,6 +90,8 @@ router.post("/", async (req, res) => {
         } else {
           logger.warn("account not found for balance update", { "accountId": toSave.accountId });
         }
+      } else if (isNew && !affectsBalance) {
+        logger.info("transaction is future-dated — balance not updated", { "date": txDate, "today": today });
       }
 
       res.json({ ok: true, data: toSave });
@@ -104,26 +119,32 @@ router.delete("/:id", async (req, res) => {
         return res.status(404).json({ ok: false, error: `Transação ${id} não encontrada` });
       }
 
-      const isPos  = transaction.type === "income";
-      const amount = parseFloat(transaction.amount);
+      const isPos          = transaction.type === "income";
+      const amount         = parseFloat(transaction.amount);
+      const txDate         = transaction.date ? transaction.date.slice(0, 10) : "";
+      const today          = new Date().toISOString().slice(0, 10);
+      const affectsBalance = txDate <= today;
 
       // Apaga a transação
       await sheetsRepository.delete("transactions", id);
-      logger.info("transaction deleted", { "id": id, "type": transaction.type, "amount": amount });
+      logger.info("transaction deleted", { "id": id, "type": transaction.type, "amount": amount, "date": txDate });
 
-      // Reverte saldo da conta
-      const accounts = await sheetsRepository.getAll("accounts");
-      const account  = accounts.find(a => a.id === transaction.accountId);
+      // Reverte saldo apenas se a transação tinha data <= hoje
+      if (affectsBalance) {
+        const accounts = await sheetsRepository.getAll("accounts");
+        const account  = accounts.find(a => a.id === transaction.accountId);
 
-      if (account) {
-        // Reverter: se era income subtrai, se era expense adiciona
-        const newBalance = account.balance - (isPos ? amount : -amount);
-        await sheetsRepository.save("accounts", { ...account, balance: newBalance });
-        logger.info("account balance reverted", {
-          "accountId":  account.id,
-          "oldBalance": account.balance,
-          "newBalance": newBalance,
-        });
+        if (account) {
+          const newBalance = account.balance - (isPos ? amount : -amount);
+          await sheetsRepository.save("accounts", { ...account, balance: newBalance });
+          logger.info("account balance reverted", {
+            "accountId":  account.id,
+            "oldBalance": account.balance,
+            "newBalance": newBalance,
+          });
+        }
+      } else {
+        logger.info("future-dated transaction deleted — balance not changed", { "date": txDate });
       }
 
       res.json({ ok: true, message: `Transação ${id} eliminada` });
