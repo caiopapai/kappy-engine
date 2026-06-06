@@ -33,7 +33,18 @@ export function makeEntityRouter(entity) {
   router.get("/", async (req, res) => {
     await withSpan(`route.${entity}.list`, {}, async () => {
       try {
-        const data = await sheetsRepository.getAll(entity);
+        const data  = await sheetsRepository.getAll(entity);
+        const page  = parseInt(req.query.page)  || null;
+        const limit = parseInt(req.query.limit) || null;
+
+        if (page && limit) {
+          const total = data.length;
+          const pages = Math.ceil(total / limit);
+          const start = (page - 1) * limit;
+          const items = data.slice(start, start + limit);
+          return res.json({ ok: true, data: items, total, page, pages, limit });
+        }
+
         res.json({ ok: true, data, count: data.length });
       } catch (err) {
         logger.error(`route.${entity}.list error`, { error: err.message });
