@@ -11,6 +11,8 @@ import transactionsRouter from "./routes/transactions.js";
 import budgetsRouter      from "./routes/budgets.js";
 import goalsRouter        from "./routes/goals.js";
 import investmentsRouter  from "./routes/investments.js";
+import creditCardsRouter  from "./routes/credit_cards.js";
+import loansRouter        from "./routes/loans.js";
 import { makeEntityRouter } from "./routes/entities.js";
 import configRouter       from "./routes/config.js";
 import settingsRouter     from "./routes/settings.js";
@@ -49,6 +51,8 @@ app.use("/api/transactions", transactionsRouter);
 app.use("/api/budgets",      budgetsRouter);
 app.use("/api/goals",        goalsRouter);
 app.use("/api/investments",  investmentsRouter);
+app.use("/api/credit_cards", creditCardsRouter);
+app.use("/api/loans",        loansRouter);
 
 // Entidades CRUD simples
 [

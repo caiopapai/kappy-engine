@@ -20,7 +20,7 @@
 // }
 
 import { Router }            from "express";
-import { sheetsRepository }  from "../repositories/sheets/SheetsRepository.js";
+import { repository as sheetsRepository } from "../repositories/RepositoryFactory.js";
 import { cache }             from "../cache/index.js";
 import { logger }            from "../telemetry/logger.js";
 
@@ -29,6 +29,7 @@ const router = Router();
 const ENTITIES = [
   "accounts", "categories", "subcategories", "transactions",
   "recurring_rules", "investments", "goals", "budgets", "settings",
+  "credit_cards", "loans",
 ];
 
 router.get("/", async (req, res) => {

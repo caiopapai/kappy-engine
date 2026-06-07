@@ -7,7 +7,7 @@
 // GET /api/transactions         → lista todas (proxy para sheets)
 
 import { Router }              from "express";
-import { sheetsRepository }    from "../repositories/sheets/SheetsRepository.js";
+import { repository as sheetsRepository } from "../repositories/RepositoryFactory.js";
 import { logger }              from "../telemetry/logger.js";
 import { withSpan }            from "../telemetry/tracer.js";
 
@@ -49,7 +49,7 @@ router.get("/recurring", async (req, res) => {
 router.post("/", async (req, res) => {
   const { transaction } = req.body;
 
-  if (!transaction || !transaction.accountId || !transaction.amount) {
+  if (!transaction || !transaction.amount) {
     return res.status(400).json({ ok: false, error: "transaction inválida" });
   }
 
@@ -63,35 +63,37 @@ router.post("/", async (req, res) => {
       const isNew   = !transaction.id;
       const isPos   = transaction.type === "income";
       const amount  = parseFloat(transaction.amount);
+      const entity  = transaction.entityType || "account";
 
-      // Regra de data: só afecta o saldo se a data não for futura
       const txDate  = toSave.date ? toSave.date.slice(0, 10) : "";
       const today   = new Date().toISOString().slice(0, 10);
       const affectsBalance = txDate <= today;
 
-      // Guarda a transação
-      await sheetsRepository.save("transactions", toSave);
-      logger.info("transaction saved", { "id": toSave.id, "type": toSave.type, "amount": amount, "date": txDate, "affectsBalance": affectsBalance });
+      await repository.save("transactions", toSave);
+      logger.info("transaction saved", { id: toSave.id, type: toSave.type, amount, entity, affectsBalance });
 
-      // Actualiza saldo da conta (só novas transações com data <= hoje)
       if (isNew && affectsBalance) {
-        const accounts = await sheetsRepository.getAll("accounts");
-        const account  = accounts.find(a => a.id === toSave.accountId);
-
-        if (account) {
-          const newBalance = account.balance + (isPos ? amount : -amount);
-          await sheetsRepository.save("accounts", { ...account, balance: newBalance });
-          logger.info("account balance updated", {
-            "accountId":  account.id,
-            "oldBalance": account.balance,
-            "newBalance": newBalance,
-            "delta":      isPos ? amount : -amount,
-          });
-        } else {
-          logger.warn("account not found for balance update", { "accountId": toSave.accountId });
+        if (entity === "account") {
+          const accounts = await repository.getAll("accounts");
+          const account  = accounts.find(a => String(a.id) === String(toSave.accountId || toSave.entityId));
+          if (account) {
+            await repository.save("accounts", { ...account, balance: (parseFloat(account.balance) || 0) + (isPos ? amount : -amount) });
+          }
+        } else if (entity === "credit_card" && transaction.type === "payment" && toSave.accountId) {
+          // Pagamento de fatura — debita a conta corrente associada
+          const accounts = await repository.getAll("accounts");
+          const account  = accounts.find(a => String(a.id) === String(toSave.accountId));
+          if (account) {
+            await repository.save("accounts", { ...account, balance: (parseFloat(account.balance) || 0) - amount });
+          }
+        } else if (entity === "loan" && toSave.accountId) {
+          // Prestação — debita a conta corrente associada
+          const accounts = await repository.getAll("accounts");
+          const account  = accounts.find(a => String(a.id) === String(toSave.accountId));
+          if (account) {
+            await repository.save("accounts", { ...account, balance: (parseFloat(account.balance) || 0) - amount });
+          }
         }
-      } else if (isNew && !affectsBalance) {
-        logger.info("transaction is future-dated — balance not updated", { "date": txDate, "today": today });
       }
 
       res.json({ ok: true, data: toSave });
